@@ -5,7 +5,7 @@ In my first year I implemented a solution in Java for a programming project (whi
 
 Then I wanted to prove them wrong and did an implementation in C with only one for loop and showed the game in the terminal, which, by looking at it some year later, I noticed it leaked a lot of memory.
 
-Now I come back to it, inspired by [carykh's video](https://www.youtube.com/watch?v=QK_KZv-YyOc), that expanded my perception and with a new language: Go.
+Now I come back to it, inspired by [carykh's video](https://www.youtube.com/watch?v=QK_KZv-YyOc), with an expanded perception of the game and with a new language: Go.
 
 Wellcome then, to my third (and I hope final) attempt at this beautiful game.
 
