@@ -24,7 +24,7 @@ func (r* Rules) DecideFate(alive bool, neighbours uint8) bool {
 
 // Parses rules string into the struct
 func NewRules(rules string) (*Rules, error) {
-	r := &Rules{}
+	r := &Rules {}
 	
 	m, err := regexp.Match("^B\\d+/S\\d+$", []byte(rules))
 
