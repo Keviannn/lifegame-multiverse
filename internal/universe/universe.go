@@ -8,7 +8,7 @@ import (
 )
 
 type Universe struct {
-	world *world.World
+	World *world.World
 	rules *rules.Rules
 }
 
@@ -19,30 +19,29 @@ func NewUniverse (x, y uint, r string) (*Universe, error) {
 		return nil, fmt.Errorf("%w", err)
 	}
 	return &Universe{
-		world: world.NewWorld(x, y),
+		World: world.NewWorld(x, y),
 		rules: v,
 	}, nil
 }
 
 // Simulates a new generation
 func (u *Universe) NewGeneration() {
-	otherWorld := world.NewWorld(u.world.Width, u.world.Heigh)
-	for i := range u.world.Size {
-		s, _ := u.world.GetCellAbs(i)
-		a, _ := u.world.AliveNeighboursAbs(i)
+	otherWorld := world.NewWorld(u.World.Width, u.World.Heigh)
+	for i := range u.World.Size {
+		s, _ := u.World.GetCellAbs(i)
+		a, _ := u.World.AliveNeighboursAbs(i)
 
 		n := u.rules.DecideFate(s, a)
-
 		
 		otherWorld.SetCellAbs(i, n)
 	}
 
-	u.world.SetCells(otherWorld.GetCells())
+	u.World.SetWorldState(otherWorld.GetWorldState())
 }
 
 // Draws the universe to a byte slice
 func (u *Universe) DrawUniverse(pixels []byte) {
-	for i, v := range u.world.GetCells() {
+	for i, v := range u.World.GetWorldState() {
 		if v {
 			pixels[4*i] = 0xff
 			pixels[4*i+1] = 0xff
