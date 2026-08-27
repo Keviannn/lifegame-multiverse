@@ -2,18 +2,11 @@ package world
 
 import "testing"
 
-func TestInitializeWorld(t *testing.T) {
-	var w World
-	w.Width = 3
-	w.Heigh = 3
+func TestNewWorld(t *testing.T) {
+	w := NewWorld(3, 3)
 
-	w.Initialize()
-
-	s := w.Size
-	t.Logf("Size is: %d", s)
-
-	if s != 9 {
-		t.Errorf("Expected world size 9: %d", s)
+	if w.Size != 9 {
+		t.Errorf("Expected world size 9: %d", w.Size)
 	}
 	if w.topLC != 0 {
 		t.Errorf("Expected top left corner 0: %d", w.topLC)
@@ -30,11 +23,7 @@ func TestInitializeWorld(t *testing.T) {
 }
 
 func TestSetCell(t *testing.T) {
-	var w World
-	w.Width = 3
-	w.Heigh = 3
-
-	w.Initialize()
+	w := NewWorld(3, 3)
 
 	err := w.SetCell(4, 4, Alive)
 	if err == nil {
@@ -54,11 +43,7 @@ func TestSetCell(t *testing.T) {
 }
 
 func TestGetCell(t *testing.T) {
-	var w World
-	w.Width = 3
-	w.Heigh = 3
-
-	w.Initialize()
+	w := NewWorld(3, 3)
 
 	w.cells[2 * w.Width + 1] = Alive
 
@@ -68,11 +53,7 @@ func TestGetCell(t *testing.T) {
 }
 
 func TestCheckCase(t *testing.T) {
-	var w World
-	w.Width = 3
-	w.Heigh = 3
-
-	w.Initialize()
+	w := NewWorld(3, 3)
 
 	if w.checkCase(w.toAbs(0, 0)) != topLC {
 		t.Error("Expected top left corner")
@@ -106,11 +87,7 @@ func TestCheckCase(t *testing.T) {
 }
 
 func TestCountNeighbours(t *testing.T) {
-	var w World
-	w.Width = 3
-	w.Heigh = 3
-
-	w.Initialize()
+	w := NewWorld(3, 3)
 
 	w.SetCell(0, 0, Alive)
 	w.SetCell(2, 2, Alive)
@@ -120,11 +97,7 @@ func TestCountNeighbours(t *testing.T) {
 }
 
 func AliveNeighbours(t *testing.T) {
-	var w World
-	w.Width = 3
-	w.Heigh = 3
-
-	w.Initialize()
+	w := NewWorld(3, 3)
 
 	w.SetCell(0, 0, Alive)
 	w.SetCell(2, 2, Alive)

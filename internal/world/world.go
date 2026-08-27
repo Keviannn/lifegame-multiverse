@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-
 // ###############    DEFINITIONS    ###############
 
 const (
@@ -71,10 +70,14 @@ type World struct {
 
 // Creates the slice of cells based on worlds width and heigh
 // and gives values to important positions in the world
-func (w *World) Initialize() {
-	w.Size = w.Width * w.Heigh
+func NewWorld(width, heigh uint) *World {
+	w := &World{
+		Width: width,
+		Heigh: heigh,
+		Size: width * heigh,
+	}
 
-	w.cells = make([]bool, w.Size)
+	w.cells = make([]bool, width * heigh)
 
 	w.topLC = 0
 	w.topRC = w.Width - 1
@@ -86,6 +89,8 @@ func (w *World) Initialize() {
 		-1,		 			    		   				1 ,
 		int(w.Width - 1), int(w.Width),  int(w.Width +  1),
 	}
+
+	return w
 }
 
 // Returns cell state
@@ -118,7 +123,7 @@ func (w *World) AliveNeighbours(x, y uint) (uint8, error) {
 
 	err := w.checkCoords(pos)
 	if err != nil {
-		return 255, err
+		return 0, err
 	}
 
 	acc := 0

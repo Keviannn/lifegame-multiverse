@@ -2,9 +2,8 @@ package rules
 
 import "testing"
 
-func TestApplyConway(t *testing.T) {
-	var r Rules
-	r.Parse("B3/S23")
+func TestNewRules(t *testing.T) {
+	r, _ := NewRules("B3/S23")
 	b := [9]bool {false, false, false, true, false, false, false, false, false}
 	s := [9]bool {false, false, true, true, false, false, false, false, false}
 
@@ -22,8 +21,7 @@ func TestApplyConway(t *testing.T) {
 }
 
 func TestInvalidLetters(t *testing.T) {
-	var r Rules
-	err := r.Parse("xyz")
+	_, err := NewRules("xyz")
 	if err == nil {
 		t.Errorf("Expected error")
 	}
@@ -31,8 +29,7 @@ func TestInvalidLetters(t *testing.T) {
 }
 
 func TestInvalidNumbers(t *testing.T) {
-	var r Rules
-	err := r.Parse("B3/S29")
+	_, err := NewRules("B3/S29")
 	if err == nil {
 		t.Errorf("Expected error")
 	}
@@ -40,8 +37,7 @@ func TestInvalidNumbers(t *testing.T) {
 }
 
 func TestApplyRules(t *testing.T) {
-	var r Rules
-	r.Parse("B3/S23")
+	r, _ := NewRules("B3/S23")
 	v := r.DecideFate(false, 3)
 	if !v {
 		t.Error("Cell expected to be born")

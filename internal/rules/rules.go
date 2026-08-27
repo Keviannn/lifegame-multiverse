@@ -23,27 +23,29 @@ func (r* Rules) DecideFate(alive bool, neighbours uint8) bool {
 }
 
 // Parses rules string into the struct
-func (r* Rules) Parse(rules string) error {
+func NewRules(rules string) (*Rules, error) {
+	r := &Rules{}
+	
 	m, err := regexp.Match("^B\\d+/S\\d+$", []byte(rules))
 
 	if err != nil {
-		return fmt.Errorf("Regex failed: %w", err)
+		return nil, fmt.Errorf("Regex failed: %w", err)
 	}
 	if m == false {
-		return fmt.Errorf("Rules string is not valid: %s", rules)
+		return nil, fmt.Errorf("Rules string is not valid: %s", rules)
 	}
 
 	// We know it has "/" as it passed the regex
 	b, s, _ := strings.Cut(rules, "/")
 
 	if err := set(strings.TrimPrefix(b, "B"), &r.birth); err != nil {
-		return fmt.Errorf("Could not set birth rules: %w", err)
+		return nil, fmt.Errorf("Could not set birth rules: %w", err)
 	}
 	if err := set(strings.TrimPrefix(s, "S"), &r.survive); err != nil {
-		return fmt.Errorf("Could not set survive rules: %w", err)
+		return nil, fmt.Errorf("Could not set survive rules: %w", err)
 	}
 
-	return nil
+	return r, nil
 }
 
 // Sets to true the values of birth or survive
