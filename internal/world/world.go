@@ -34,16 +34,16 @@ type Coords struct {
 var chkF = []uint8 {0, 1, 2, 3, 4, 5, 6, 7}
 
 // Edge checks
-var chkTE = []uint8 {0, 1, 2, 3, 4}
-var chkBE = []uint8 {3, 4, 5, 6, 7}
-var chkLE = []uint8 {0, 1, 3, 5, 6}
-var chkRE = []uint8 {1, 2, 4, 6, 7} 
+var chkBE = []uint8 {0, 1, 2, 3, 4}
+var chkTE = []uint8 {3, 4, 5, 6, 7}
+var chkRE = []uint8 {0, 1, 3, 5, 6}
+var chkLE = []uint8 {1, 2, 4, 6, 7} 
 
 // Corner checks
-var chkTLC = []uint8 {0, 1, 3}
-var chkTRC = []uint8 {1, 2, 4}
-var chkBLC = []uint8 {3, 5, 6}
-var chkBRC = []uint8 {4, 6, 7}
+var chkBRC = []uint8 {0, 1, 3}
+var chkBLC = []uint8 {1, 2, 4}
+var chkTRC = []uint8 {3, 5, 6}
+var chkTLC = []uint8 {4, 6, 7}
 
 // This is where they live
 // Must be initialized after specifying Width and Heigh
@@ -71,7 +71,7 @@ type World struct {
 // Creates the slice of cells based on worlds width and heigh
 // and gives values to important positions in the world
 func NewWorld(width, heigh uint) *World {
-	w := &World{
+	w := &World {
 		Width: width,
 		Heigh: heigh,
 		Size: width * heigh,
@@ -93,10 +93,29 @@ func NewWorld(width, heigh uint) *World {
 	return w
 }
 
+// Sets new state for the whole world
+func (w *World) SetWorldState(newCells []bool) {
+	w.cells = newCells
+}
+
+// Gets state of the whole world
+func (w *World) GetWorldState() []bool {
+	return w.cells
+}
+
 // Returns cell state
 func (w *World) GetCell(x, y uint) (bool, error) {
 	pos := w.toAbs(x, y)
 
+	if err := w.checkCoords(pos); err != nil {
+		return false, fmt.Errorf("%w", err)
+	}
+
+	return w.cells[pos], nil
+}
+
+// Returns cell state
+func (w *World) GetCellAbs(pos uint) (bool, error) {
 	if err := w.checkCoords(pos); err != nil {
 		return false, fmt.Errorf("%w", err)
 	}
@@ -117,10 +136,52 @@ func (w *World) SetCell(x, y uint, state bool) error {
 	return nil
 }
 
+// Sets cell state
+func (w *World) SetCellAbs(pos uint, state bool) error {
+	if err := w.checkCoords(pos); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	w.cells[pos] = state
+
+	return nil
+}
+
 // Calculate alive neighbours
 func (w *World) AliveNeighbours(x, y uint) (uint8, error) {
 	pos := w.toAbs(x, y)
 
+	err := w.checkCoords(pos)
+	if err != nil {
+		return 0, err
+	}
+
+	acc := 0
+	switch w.checkCase(pos) {
+	case lefE:
+		return w.countNeighbours(chkLE, pos), nil
+	case rigE:
+		return w.countNeighbours(chkRE, pos), nil
+	case topE:
+		return w.countNeighbours(chkTE, pos), nil
+	case botE:
+		return w.countNeighbours(chkBE, pos), nil
+	case topLC:
+		return w.countNeighbours(chkTLC, pos), nil
+	case botLC:
+		return w.countNeighbours(chkBLC, pos), nil
+	case topRC:
+		return w.countNeighbours(chkTRC, pos), nil
+	case botRC:
+		return w.countNeighbours(chkBRC, pos), nil
+	case inCell:
+		return w.countNeighbours(chkF, pos), nil
+	}
+
+	return uint8(acc), nil
+}
+
+func (w *World) AliveNeighboursAbs(pos uint) (uint8, error) {
 	err := w.checkCoords(pos)
 	if err != nil {
 		return 0, err
