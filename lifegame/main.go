@@ -3,32 +3,28 @@ package main
 import (
 	"log"
 
-	"github.com/Keviannn/lifegame-multiverse/internal/universe"
 	"github.com/Keviannn/lifegame-multiverse/internal/world"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 const (
-	screenWidth  = 640
-	screenHeight = 480 
+	screenWidth  = 320
+	screenHeight = 240
 )
 
 type Game struct {
-	universe *universe.Universe
-	pixels []byte
+	World *world.World
+	View *ebiten.Image
 }
 
 func (g* Game) Update() error {
-	g.universe.NewGeneration()
+	g.World.NewGenerationRoutines()
 	return nil
 }
 
 func (g* Game) Draw(screen *ebiten.Image) {
-	if g.pixels == nil {
-		g.pixels = make([]byte, 4 * screenWidth * screenHeight)
-	}
-	g.universe.DrawUniverse(g.pixels)
-	screen.WritePixels(g.pixels)
+	const cols = 2
+	screen.DrawImage(g.World.WorldImage, nil)
 }
 
 func (g* Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -36,26 +32,27 @@ func (g* Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func main()  {
-	u, err := universe.NewUniverse(screenWidth, screenHeight, "B3/S23")
+	
+	u4, err := world.NewWorld(screenWidth, screenHeight, "B014/S2")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	
-	u.World.SetCell(161, 118, world.Alive)
-	u.World.SetCell(163, 119, world.Alive)
+	u4.SetCell(91, 98, world.Alive)
+	u4.SetCell(93, 99, world.Alive)
 
-	u.World.SetCell(160, 120, world.Alive)
-	u.World.SetCell(161, 120, world.Alive)
-	u.World.SetCell(164, 120, world.Alive)
-	u.World.SetCell(165, 120, world.Alive)
-	u.World.SetCell(166, 120, world.Alive)
+	u4.SetCell(90, 100, world.Alive)
+	u4.SetCell(91, 100, world.Alive)
+	u4.SetCell(94, 100, world.Alive)
+	u4.SetCell(95, 100, world.Alive)
+	u4.SetCell(96, 100, world.Alive)
 
-	ebiten.SetWindowSize(1280, 960)
+	ebiten.SetWindowSize(screenWidth * 4, screenHeight * 4)
 	ebiten.SetWindowTitle("LifeGame")
 
 	game := &Game {
-		universe: u,
+		World: u4,
+		View: ebiten.NewImage(screenWidth, screenHeight),
 	}
 
 	if err := ebiten.RunGame(game); err != nil {

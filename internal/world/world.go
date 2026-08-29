@@ -2,6 +2,10 @@ package world
 
 import (
 	"fmt"
+	"sync"
+
+	"github.com/Keviannn/lifegame-multiverse/internal/rules"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // ###############    DEFINITIONS    ###############
@@ -19,31 +23,24 @@ const (
 	botE = 3
 
 	topLC = 4
-	botLC = 5
-	topRC = 6
+	topRC = 5
+	botLC = 6
 	botRC = 7
 	inCell = 8
 )
 
-type Coords struct {
-	x int
-	y int
+// What neighbours to visit for every cell position
+var chk = [9][]uint8 {
+	{1, 2, 4, 6, 7},
+	{0, 1, 3, 5, 6},
+	{3, 4, 5, 6, 7},
+	{0, 1, 2, 3, 4},
+	{4, 6, 7},
+	{3, 5, 6},
+	{1, 2, 4},
+	{0, 1, 3},
+	{0, 1, 2, 3, 4, 5, 6, 7},
 }
-
-// Full check
-var chkF = []uint8 {0, 1, 2, 3, 4, 5, 6, 7}
-
-// Edge checks
-var chkBE = []uint8 {0, 1, 2, 3, 4}
-var chkTE = []uint8 {3, 4, 5, 6, 7}
-var chkRE = []uint8 {0, 1, 3, 5, 6}
-var chkLE = []uint8 {1, 2, 4, 6, 7} 
-
-// Corner checks
-var chkBRC = []uint8 {0, 1, 3}
-var chkBLC = []uint8 {1, 2, 4}
-var chkTRC = []uint8 {3, 5, 6}
-var chkTLC = []uint8 {4, 6, 7}
 
 // This is where they live
 // Must be initialized after specifying Width and Heigh
@@ -52,6 +49,9 @@ type World struct {
 	Width uint
 	Heigh uint
 	Size uint
+
+	WorldImage *ebiten.Image
+	view []byte
 
 	// World corners
 	botRC uint
@@ -62,22 +62,33 @@ type World struct {
 	// Where to move to check for neighbours
 	cellNeighbours [8]int
 
-	cells []bool
+	present, future uint8
+	cells [2][]bool
+	kind []uint8
+	rules rules.Rules
 }
 
 
 // ###############    PUBLIC METHODS    ###############
 
-// Creates the slice of cells based on worlds width and heigh
+// Creates the slice of cells based on worlds width and height
 // and gives values to important positions in the world
-func NewWorld(width, heigh uint) *World {
-	w := &World {
-		Width: width,
-		Heigh: heigh,
-		Size: width * heigh,
+func NewWorld(x, y uint, r string) (*World, error) {
+	v, err := rules.NewRules(r)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
 	}
 
-	w.cells = make([]bool, width * heigh)
+	w := &World {
+		Width: x,
+		Heigh: y,
+		Size: x * y,
+		WorldImage: ebiten.NewImage(int(x), int(y)),
+		view: make([]byte, x * y * 4),
+		rules: *v,
+		present: 0,
+		future: 1,
+	}
 
 	w.topLC = 0
 	w.topRC = w.Width - 1
@@ -90,17 +101,14 @@ func NewWorld(width, heigh uint) *World {
 		int(w.Width - 1), int(w.Width),  int(w.Width +  1),
 	}
 
-	return w
-}
+	for i := range 2 {
+		w.cells[i] = make([]bool, w.Size)
+	}
 
-// Sets new state for the whole world
-func (w *World) SetWorldState(newCells []bool) {
-	w.cells = newCells
-}
+	w.kind = make([]uint8, w.Size)
+	w.checkAllCases()
 
-// Gets state of the whole world
-func (w *World) GetWorldState() []bool {
-	return w.cells
+	return w, nil
 }
 
 // Returns cell state
@@ -111,16 +119,16 @@ func (w *World) GetCell(x, y uint) (bool, error) {
 		return false, fmt.Errorf("%w", err)
 	}
 
-	return w.cells[pos], nil
+	return w.cells[w.present][pos], nil
 }
 
 // Returns cell state
-func (w *World) GetCellAbs(pos uint) (bool, error) {
+func (w *World) getCellAbs(pos uint) (bool, error) {
 	if err := w.checkCoords(pos); err != nil {
 		return false, fmt.Errorf("%w", err)
 	}
 
-	return w.cells[pos], nil
+	return w.cells[w.present][pos], nil
 }
 
 // Sets cell state
@@ -131,87 +139,105 @@ func (w *World) SetCell(x, y uint, state bool) error {
 		return fmt.Errorf("%w", err)
 	}
 
-	w.cells[pos] = state
+	w.cells[w.present][pos] = state
 
 	return nil
 }
 
-// Sets cell state
-func (w *World) SetCellAbs(pos uint, state bool) error {
+// Sets cell state in the future
+func (w *World) setCellAbs(pos uint, state bool) error {
 	if err := w.checkCoords(pos); err != nil {
 		return fmt.Errorf("%w", err)
 	}
 
-	w.cells[pos] = state
+	w.cells[w.future][pos] = state
 
 	return nil
 }
 
-// Calculate alive neighbours
-func (w *World) AliveNeighbours(x, y uint) (uint8, error) {
-	pos := w.toAbs(x, y)
-
+func (w *World) aliveNeighboursAbs(pos uint) (uint8, error) {
 	err := w.checkCoords(pos)
 	if err != nil {
 		return 0, err
 	}
 
 	acc := 0
-	switch w.checkCase(pos) {
-	case lefE:
-		return w.countNeighbours(chkLE, pos), nil
-	case rigE:
-		return w.countNeighbours(chkRE, pos), nil
-	case topE:
-		return w.countNeighbours(chkTE, pos), nil
-	case botE:
-		return w.countNeighbours(chkBE, pos), nil
-	case topLC:
-		return w.countNeighbours(chkTLC, pos), nil
-	case botLC:
-		return w.countNeighbours(chkBLC, pos), nil
-	case topRC:
-		return w.countNeighbours(chkTRC, pos), nil
-	case botRC:
-		return w.countNeighbours(chkBRC, pos), nil
-	case inCell:
-		return w.countNeighbours(chkF, pos), nil
+
+	for _, v := range chk[w.kind[pos]] {
+		if w.cells[w.present][uint(int(pos) + w.cellNeighbours[v])] {
+			acc += 1
+		}
 	}
 
 	return uint8(acc), nil
 }
 
-func (w *World) AliveNeighboursAbs(pos uint) (uint8, error) {
-	err := w.checkCoords(pos)
-	if err != nil {
-		return 0, err
-	}
+// Simulates a new generation
+func (w *World) NewGeneration() {
+	w.drawWorld()
+	for i := range w.Size {
+		s, _ := w.getCellAbs(i)
+		a, _ := w.aliveNeighboursAbs(i)
 
-	acc := 0
-	switch w.checkCase(pos) {
-	case lefE:
-		return w.countNeighbours(chkLE, pos), nil
-	case rigE:
-		return w.countNeighbours(chkRE, pos), nil
-	case topE:
-		return w.countNeighbours(chkTE, pos), nil
-	case botE:
-		return w.countNeighbours(chkBE, pos), nil
-	case topLC:
-		return w.countNeighbours(chkTLC, pos), nil
-	case botLC:
-		return w.countNeighbours(chkBLC, pos), nil
-	case topRC:
-		return w.countNeighbours(chkTRC, pos), nil
-	case botRC:
-		return w.countNeighbours(chkBRC, pos), nil
-	case inCell:
-		return w.countNeighbours(chkF, pos), nil
-	}
+		n := w.rules.DecideFate(s, a)
 
-	return uint8(acc), nil
+		w.setCellAbs(i, n)
+	}
+	w.present = 1 - w.present
+	w.future = 1 - w.future
 }
 
+// Simulates a new generation
+// TODO: make dynamic routine assertion based in size
+func (w *World) NewGenerationRoutines() {
+	part := w.Size / 4
+	var start uint = 0
+	var finish uint = part
+
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func(from, until uint) {
+			defer wg.Done()
+			w.newGenPartial(from, until)
+		}(start, finish)
+		start = finish
+		finish += part
+	}
+	wg.Wait()
+	w.present = 1 - w.present
+	w.future = 1 - w.future
+	w.drawWorld()
+}
+
+func (w *World) newGenPartial(from, until uint) {
+	for i := from; i < until; i++ {
+		s, _ := w.getCellAbs(i)
+		a, _ := w.aliveNeighboursAbs(i)
+
+		n := w.rules.DecideFate(s, a)
+
+		w.setCellAbs(i, n)
+	}
+}
+
+// Draws the world
+func (w *World) drawWorld() {
+	for i, v := range w.cells[w.present] {
+		if v {
+			w.view[4*i] = 0xff
+			w.view[4*i+1] = 0xff
+			w.view[4*i+2] = 0xff
+			w.view[4*i+3] = 0xff
+		} else {
+			w.view[4*i] = 0
+			w.view[4*i+1] = 0
+			w.view[4*i+2] = 0
+			w.view[4*i+3] = 0
+		}
+	}
+	w.WorldImage.WritePixels(w.view)
+}
 
 // ###############    PRIVATE METHODS    ###############
 
@@ -222,7 +248,7 @@ func (w *World) toAbs(x, y uint) uint {
 
 // Checks if coordinates are inside the world
 func (w *World) checkCoords(pos uint) error {
-	if pos > w.Size {
+	if pos >= w.Size {
 		return fmt.Errorf("Cell coordinates out of bounds for a %dx%d world", w.Width, w.Heigh)
 	}
 
@@ -231,44 +257,58 @@ func (w *World) checkCoords(pos uint) error {
 
 // Returns relative position of cell like top left corner
 // Does not check for error as its called always after checking
-func (w *World) checkCase(pos uint) int8 {
-	switch pos {
-	case w.topLC:
-		return topLC
-	case w.topRC:
-		return  topRC
-	case w.botLC:
-		return botLC
-	case w.botRC:
-		return botRC
-	default:
-		if pos < w.Width{
+func (w *World) checkCase(pos uint) uint8 {
+	rem := pos % w.Width
+	isC := pos == w.topLC || pos == w.topRC || pos == w.botLC || pos == w.botRC
+	isLE := rem == 0
+	isRE := rem == w.Width - 1
+	isTE := pos <= w.topRC
+	isBE := pos >= w.botLC
+
+	// Check from most common to least common celltype
+	if  !isLE && !isRE && !isTE && !isBE {
+		return inCell
+	} else {
+		if isLE && !isC {
+			return lefE
+		} else if isRE && !isC {
+			return rigE
+		} else if isTE && !isC {
 			return topE
-		} else if pos > w.botLC && pos < w.Size {
-			return botE									
+		} else if isBE && !isC {
+			return botE
 		} else {
-			if rest := pos % w.Width; rest == 0 {
-				return lefE
-			} else if rest == w.Width - 1 {
-				return rigE
-			} else {
-				return inCell
+			switch pos {
+			case w.topLC:
+				return topLC
+			case w.topRC:
+				return  topRC
+			case w.botLC:
+				return botLC
+			default:
+				return botRC
 			}
 		}
-
 	}
 }
 
-// Returns the number of the check type neighbours
-// Does not check for error as its called always after checking
-func (w *World) countNeighbours(check []uint8, pos uint) uint8 {
-	acc := 0
-
-	for _, v := range check {
-		if w.cells[uint(int(pos) + w.cellNeighbours[v])] {
-			acc += 1
-		}
+// Precalculates all relative positions for all cells using goroutines
+// TODO: make dynamic routine assertion based in size
+func (w *World) checkAllCases () {
+	part := w.Size / 4
+	var start uint = 0
+	var finish uint = part
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func(from, until uint) {
+			defer wg.Done()
+			for i := from; i < until; i++ {
+				w.kind[i] = w.checkCase(uint(i))
+			}
+		}(start, finish)
+		start = finish
+		finish += part
 	}
-
-	return uint8(acc)
+	wg.Wait()
 }

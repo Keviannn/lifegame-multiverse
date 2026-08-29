@@ -23,7 +23,6 @@ lifegame-multiverse/
 ├── go.mod
 ├── go.sum
 ├── internal
-│   ├── engine
 │   ├── rules
 │   └── world
 ├── LICENSE
