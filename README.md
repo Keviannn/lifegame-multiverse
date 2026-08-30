@@ -41,3 +41,8 @@ So the requirement list will be:
 - [ ] Can simulate various universes at the same time in the same space.
 
 Let's see what I am able to achieve.
+
+### Update 31/8/2026
+The program can simulate a single 2560x1440 world fullscreen in my laptop (2025x1139) at 60TPS and 60FPS.\
+That is checking, updating and showing 3.686.400 cells 60 times per second.\
+Is this a really big universe? For my current hardware I think it is, but I will try to squeeze a little bit before marking the first checkbox.
