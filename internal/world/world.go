@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/Keviannn/lifegame-multiverse/internal/rules"
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // ###############    DEFINITIONS    ###############
@@ -46,8 +45,7 @@ type World struct {
 	Heigh uint
 	Size uint
 
-	// Ebiten view and image
-	WorldImage *ebiten.Image
+	// Ebiten view
 	view []byte
 
 	// Two generations
@@ -79,7 +77,6 @@ func NewWorld(x, y uint, r string) (*World, error) {
 		Width: x,
 		Heigh: y,
 		Size: x * y,
-		WorldImage: ebiten.NewImage(int(x), int(y)),
 		view: make([]byte, x * y * 4),
 		rules: *v,
 		present: 0,
@@ -160,7 +157,6 @@ func (w *World) aliveNeighboursAbs(pos uint) uint8 {
 
 // Simulates a new generation
 func (w *World) NewGeneration() {
-	w.drawWorld(1)
 	for i := range w.Size {
 		s := w.getCellAbs(i)
 		a := w.aliveNeighboursAbs(i)
@@ -193,7 +189,6 @@ func (w *World) NewGenerationRoutines(num uint) {
 	wg.Wait()
 	w.present = 1 - w.present
 	w.future = 1 - w.future
-	w.drawWorld(num)
 }
 
 func (w *World) newGenPartial(from, until uint) {
@@ -208,7 +203,7 @@ func (w *World) newGenPartial(from, until uint) {
 }
 
 // Draws the world and sets its image
-func (w *World) drawWorld(num uint) {
+func (w *World) DrawWorld(num uint) []byte {
 	part := w.Size / num
 	var start uint = 0
 	var finish uint = part
@@ -224,7 +219,7 @@ func (w *World) drawWorld(num uint) {
 		finish += part
 	}
 	wg.Wait()
-	w.WorldImage.WritePixels(w.view)
+	return w.view
 }
 
 func (w *World) drawPartial (from, until uint) {

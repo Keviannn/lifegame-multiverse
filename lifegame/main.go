@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Keviannn/lifegame-multiverse/internal/world"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 const (
-	screenWidth  = 320
-	screenHeight = 240
+	screenWidth  = 2560
+	screenHeight = 1920
 )
 
 type Game struct {
@@ -18,13 +20,14 @@ type Game struct {
 }
 
 func (g* Game) Update() error {
-	g.World.NewGenerationRoutines()
+	g.World.NewGenerationRoutines(16)
 	return nil
 }
 
 func (g* Game) Draw(screen *ebiten.Image) {
-	const cols = 2
-	screen.DrawImage(g.World.WorldImage, nil)
+	tps := fmt.Sprintf("Current TPS: %.0f\nCurrent FPS: %.0f", ebiten.ActualTPS(), ebiten.ActualFPS())
+	screen.WritePixels(g.World.DrawWorld(16))
+	ebitenutil.DebugPrint(screen, tps)
 }
 
 func (g* Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -38,16 +41,9 @@ func main()  {
 		log.Fatal(err)
 	}
 
-	u4.SetCell(91, 98, world.Alive)
-	u4.SetCell(93, 99, world.Alive)
+	u4.Populate(0.05)
 
-	u4.SetCell(90, 100, world.Alive)
-	u4.SetCell(91, 100, world.Alive)
-	u4.SetCell(94, 100, world.Alive)
-	u4.SetCell(95, 100, world.Alive)
-	u4.SetCell(96, 100, world.Alive)
-
-	ebiten.SetWindowSize(screenWidth * 4, screenHeight * 4)
+	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("LifeGame")
 
 	game := &Game {
