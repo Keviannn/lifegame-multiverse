@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/Keviannn/lifegame-multiverse/internal/rules"
@@ -14,14 +15,10 @@ const (
 	Alive = true
 	Dead = false
 
-	// All the edge
 	lefE = 0
 	rigE = 1
-
-	// Inside the edge [X, (...), Y]
 	topE = 2
 	botE = 3
-
 	topLC = 4
 	topRC = 5
 	botLC = 6
@@ -45,26 +42,25 @@ var chk = [9][]uint8 {
 // This is where they live
 // Must be initialized after specifying Width and Heigh
 type World struct {
-	// World size data
 	Width uint
 	Heigh uint
 	Size uint
 
+	// Ebiten view and image
 	WorldImage *ebiten.Image
 	view []byte
 
-	// World corners
-	botRC uint
-	botLC uint
-	topRC uint
-	topLC uint
-
-	// Where to move to check for neighbours
-	cellNeighbours [8]int
-
+	// Two generations
 	present, future uint8
 	cells [2][]bool
+
+	// What neighbours to visit
+	cellNeighbours [8]int
+
+	// Relative position of all cells
 	kind []uint8
+
+	// World rules
 	rules rules.Rules
 }
 
@@ -90,11 +86,6 @@ func NewWorld(x, y uint, r string) (*World, error) {
 		future: 1,
 	}
 
-	w.topLC = 0
-	w.topRC = w.Width - 1
-	w.botLC = (w.Size - 1) - (w.Width - 1)
-	w.botRC = w.Size - 1
-
 	w.cellNeighbours = [8]int {
 		int(-w.Width -1), int(-w.Width), int(-w.Width + 1),
 		-1,		 			    		   				1 ,
@@ -111,6 +102,15 @@ func NewWorld(x, y uint, r string) (*World, error) {
 	return w, nil
 }
 
+// Populate the world with selected density
+func (w *World) Populate (density float64) {
+	for i := range w.Size {
+		if rand.Float64() < density {
+			w.cells[0][i] = true
+		}
+	}
+}
+
 // Returns cell state
 func (w *World) GetCell(x, y uint) (bool, error) {
 	pos := w.toAbs(x, y)
@@ -122,7 +122,7 @@ func (w *World) GetCell(x, y uint) (bool, error) {
 	return w.cells[w.present][pos], nil
 }
 
-// Returns cell state
+// Returns cell state in the present for absolute position
 func (w *World) getCellAbs(pos uint) (bool, error) {
 	if err := w.checkCoords(pos); err != nil {
 		return false, fmt.Errorf("%w", err)
@@ -144,7 +144,7 @@ func (w *World) SetCell(x, y uint, state bool) error {
 	return nil
 }
 
-// Sets cell state in the future
+// Sets cell state in the future for absolute position
 func (w *World) setCellAbs(pos uint, state bool) error {
 	if err := w.checkCoords(pos); err != nil {
 		return fmt.Errorf("%w", err)
@@ -155,6 +155,7 @@ func (w *World) setCellAbs(pos uint, state bool) error {
 	return nil
 }
 
+// Counts all alive neighbours of a cell
 func (w *World) aliveNeighboursAbs(pos uint) (uint8, error) {
 	err := w.checkCoords(pos)
 	if err != nil {
@@ -190,12 +191,12 @@ func (w *World) NewGeneration() {
 // Simulates a new generation
 // TODO: make dynamic routine assertion based in size
 func (w *World) NewGenerationRoutines() {
-	part := w.Size / 4
+	part := w.Size / 8
 	var start uint = 0
 	var finish uint = part
 
 	var wg sync.WaitGroup
-	for range 4 {
+	for range 8 {
 		wg.Add(1)
 		go func(from, until uint) {
 			defer wg.Done()
@@ -221,7 +222,7 @@ func (w *World) newGenPartial(from, until uint) {
 	}
 }
 
-// Draws the world
+// Draws the world and sets its image
 func (w *World) drawWorld() {
 	for i, v := range w.cells[w.present] {
 		if v {
@@ -259,16 +260,16 @@ func (w *World) checkCoords(pos uint) error {
 // Does not check for error as its called always after checking
 func (w *World) checkCase(pos uint) uint8 {
 	rem := pos % w.Width
-	isC := pos == w.topLC || pos == w.topRC || pos == w.botLC || pos == w.botRC
 	isLE := rem == 0
 	isRE := rem == w.Width - 1
-	isTE := pos <= w.topRC
-	isBE := pos >= w.botLC
+	isTE := pos <= w.Width - 1
+	isBE := pos >= (w.Size - 1) - (w.Width - 1)
 
 	// Check from most common to least common celltype
 	if  !isLE && !isRE && !isTE && !isBE {
 		return inCell
 	} else {
+		isC := pos == 0 || pos == w.Width - 1 || pos == (w.Size - 1) - (w.Width - 1) || pos == w.Size - 1
 		if isLE && !isC {
 			return lefE
 		} else if isRE && !isC {
@@ -279,14 +280,14 @@ func (w *World) checkCase(pos uint) uint8 {
 			return botE
 		} else {
 			switch pos {
-			case w.topLC:
+			case 0:
 				return topLC
-			case w.topRC:
+			case w.Width - 1:
 				return  topRC
-			case w.botLC:
-				return botLC
-			default:
+			case w.Size - 1:
 				return botRC
+			default:
+				return botLC
 			}
 		}
 	}
