@@ -160,7 +160,7 @@ func (w *World) aliveNeighboursAbs(pos uint) uint8 {
 
 // Simulates a new generation
 func (w *World) NewGeneration() {
-	w.drawWorld()
+	w.drawWorld(1)
 	for i := range w.Size {
 		s := w.getCellAbs(i)
 		a := w.aliveNeighboursAbs(i)
@@ -175,13 +175,13 @@ func (w *World) NewGeneration() {
 
 // Simulates a new generation
 // TODO: make dynamic routine assertion based in size
-func (w *World) NewGenerationRoutines() {
-	part := w.Size / 8
+func (w *World) NewGenerationRoutines(num uint) {
+	part := w.Size / num
 	var start uint = 0
 	var finish uint = part
 
 	var wg sync.WaitGroup
-	for range 8 {
+	for range num {
 		wg.Add(1)
 		go func(from, until uint) {
 			defer wg.Done()
@@ -193,7 +193,7 @@ func (w *World) NewGenerationRoutines() {
 	wg.Wait()
 	w.present = 1 - w.present
 	w.future = 1 - w.future
-	w.drawWorld()
+	w.drawWorld(num)
 }
 
 func (w *World) newGenPartial(from, until uint) {
@@ -208,9 +208,28 @@ func (w *World) newGenPartial(from, until uint) {
 }
 
 // Draws the world and sets its image
-func (w *World) drawWorld() {
-	for i, v := range w.cells[w.present] {
-		if v {
+func (w *World) drawWorld(num uint) {
+	part := w.Size / num
+	var start uint = 0
+	var finish uint = part
+
+	var wg sync.WaitGroup
+	for range num {
+		wg.Add(1)
+		go func(from, until uint) {
+			defer wg.Done()
+			w.drawPartial(from, until)
+		}(start, finish)
+		start = finish
+		finish += part
+	}
+	wg.Wait()
+	w.WorldImage.WritePixels(w.view)
+}
+
+func (w *World) drawPartial (from, until uint) {
+	for i := from; i < until; i++ {
+		if w.cells[w.present][i] {
 			w.view[4*i] = 0xff
 			w.view[4*i+1] = 0xff
 			w.view[4*i+2] = 0xff
@@ -222,7 +241,6 @@ func (w *World) drawWorld() {
 			w.view[4*i+3] = 0
 		}
 	}
-	w.WorldImage.WritePixels(w.view)
 }
 
 // ###############    PRIVATE METHODS    ###############
