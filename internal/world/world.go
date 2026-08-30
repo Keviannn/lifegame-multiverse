@@ -123,12 +123,8 @@ func (w *World) GetCell(x, y uint) (bool, error) {
 }
 
 // Returns cell state in the present for absolute position
-func (w *World) getCellAbs(pos uint) (bool, error) {
-	if err := w.checkCoords(pos); err != nil {
-		return false, fmt.Errorf("%w", err)
-	}
-
-	return w.cells[w.present][pos], nil
+func (w *World) getCellAbs(pos uint) bool {
+	return w.cells[w.present][pos]
 }
 
 // Sets cell state
@@ -145,23 +141,12 @@ func (w *World) SetCell(x, y uint, state bool) error {
 }
 
 // Sets cell state in the future for absolute position
-func (w *World) setCellAbs(pos uint, state bool) error {
-	if err := w.checkCoords(pos); err != nil {
-		return fmt.Errorf("%w", err)
-	}
-
+func (w *World) setCellAbs(pos uint, state bool) {
 	w.cells[w.future][pos] = state
-
-	return nil
 }
 
 // Counts all alive neighbours of a cell
-func (w *World) aliveNeighboursAbs(pos uint) (uint8, error) {
-	err := w.checkCoords(pos)
-	if err != nil {
-		return 0, err
-	}
-
+func (w *World) aliveNeighboursAbs(pos uint) uint8 {
 	acc := 0
 
 	for _, v := range chk[w.kind[pos]] {
@@ -170,15 +155,15 @@ func (w *World) aliveNeighboursAbs(pos uint) (uint8, error) {
 		}
 	}
 
-	return uint8(acc), nil
+	return uint8(acc)
 }
 
 // Simulates a new generation
 func (w *World) NewGeneration() {
 	w.drawWorld()
 	for i := range w.Size {
-		s, _ := w.getCellAbs(i)
-		a, _ := w.aliveNeighboursAbs(i)
+		s := w.getCellAbs(i)
+		a := w.aliveNeighboursAbs(i)
 
 		n := w.rules.DecideFate(s, a)
 
@@ -213,8 +198,8 @@ func (w *World) NewGenerationRoutines() {
 
 func (w *World) newGenPartial(from, until uint) {
 	for i := from; i < until; i++ {
-		s, _ := w.getCellAbs(i)
-		a, _ := w.aliveNeighboursAbs(i)
+		s := w.getCellAbs(i)
+		a := w.aliveNeighboursAbs(i)
 
 		n := w.rules.DecideFate(s, a)
 
